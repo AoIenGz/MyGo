@@ -769,8 +769,7 @@ struct History {
         offsetX: 0,
         offsetY: 4,
       })
-      .width('80%')
-      .maxWidth(400);
+      .width('80%');
     }
     .width('100%')
     .height('100%')

@@ -1,4 +1,5 @@
 import router from '@ohos.router';
+import http from '@ohos.net.http';
 import { DetectionResult, SystemStatus } from '../common/Interfaces';
 
 // API服务
@@ -7,8 +8,18 @@ class ApiService {
 
   async fetchDetectionResult(): Promise<DetectionResult> {
     try {
-      const response = await fetch(`${this.baseUrl}/detection/result`);
-      return await response.json();
+      const httpRequest = http.createHttp();
+      const response = await httpRequest.request(`${this.baseUrl}/detection/result`, {
+        method: http.RequestMethod.GET,
+        header: {
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.responseCode === 200) {
+        return JSON.parse(response.result as string) as DetectionResult;
+      } else {
+        throw new Error(`HTTP error: ${response.responseCode}`);
+      }
     } catch (error) {
       console.error('获取检测结果失败:', error);
       // 返回默认值
@@ -35,8 +46,12 @@ class ApiService {
 
   async startDetection(): Promise<void> {
     try {
-      await fetch(`${this.baseUrl}/detection/start`, {
-        method: 'POST',
+      const httpRequest = http.createHttp();
+      await httpRequest.request(`${this.baseUrl}/detection/start`, {
+        method: http.RequestMethod.POST,
+        header: {
+          'Content-Type': 'application/json'
+        }
       });
     } catch (error) {
       console.error('开始检测失败:', error);
@@ -45,8 +60,12 @@ class ApiService {
 
   async stopDetection(): Promise<void> {
     try {
-      await fetch(`${this.baseUrl}/detection/stop`, {
-        method: 'POST',
+      const httpRequest = http.createHttp();
+      await httpRequest.request(`${this.baseUrl}/detection/stop`, {
+        method: http.RequestMethod.POST,
+        header: {
+          'Content-Type': 'application/json'
+        }
       });
     } catch (error) {
       console.error('停止检测失败:', error);
@@ -55,12 +74,13 @@ class ApiService {
 
   async importMLResult(result: DetectionResult): Promise<void> {
     try {
-      await fetch(`${this.baseUrl}/detection/import-ml-result`, {
-        method: 'POST',
-        headers: {
+      const httpRequest = http.createHttp();
+      await httpRequest.request(`${this.baseUrl}/detection/import-ml-result`, {
+        method: http.RequestMethod.POST,
+        header: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ result }),
+        extraData: JSON.stringify({ result }),
       });
     } catch (error) {
       console.error('导入机器学习结果失败:', error);

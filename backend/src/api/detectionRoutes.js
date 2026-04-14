@@ -43,4 +43,22 @@ router.post('/import-ml-result', (req, res) => {
   }
 });
 
+// 图片分析 - 接收 base64 图片并调用 Python 检测
+router.post('/analyze', async (req, res) => {
+  try {
+    const { image } = req.body;
+
+    if (!image) {
+      return res.status(400).json({ success: false, error: '未提供图片数据' });
+    }
+
+    console.log('收到图片分析请求, 数据长度:', image.length);
+    const result = await detectionService.analyzeImage(image);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('图片分析错误:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

@@ -1,168 +1,139 @@
 # 产品能效标签与缺陷检测系统
 
-基于 OpenHarmony 6.0.2 开发的产品能效标签与缺陷检测系统，包含前端和后端服务。
+基于 OpenHarmony 6.0.2 开发的产品能效标签与缺陷检测系统，集成 YOLOv8 深度学习模型，支持手动检测与工业产线自动检测两种模式。
 
 ## 系统功能
 
-### 1. 产品能效检测系统
-- **标签识别与校验**：通过工业相机采集产品能效数据，准确识别能效标签上的信息，并与预设的产品型号信息进行比对。
+### 双模式检测
 
-### 2. 产品质量检测
-- **缺陷检测**：检测标签是否存在破损、污渍、褶皱等缺陷。
-- **位置检测**：判断能效标签是否粘贴在规定位置。
-- **实时反馈**：检测结果实时显示，便于生产环节的即时调整。
+#### 手动模式（图片选择）
+通过三种方式选择图片进行检测：
+- **选择图片**：从相册选择图片进行分析
+- **拍照检测**：调用设备相机实时拍摄标签
+- **测试图片**：加载内置测试图片验证检测效果
 
-### 3. 系统可扩展性
-- 系统可以灵活接入家电产品在工业生产中的其他场景功能。
+#### 产线模式（工业相机）
+接入工业相机实现流水线自动检测：
+- **自动拍照**：按设定时间间隔（5s/10s/30s/60s）自动捕获标签图像
+- **自动分析**：每次拍照后自动调用后端进行检测分析
+- **实时统计**：显示检测总数、通过率、缺陷统计、平均耗时、运行时长
+- **开始/暂停/结束**：灵活控制检测流程
 
-### 4. 机器学习集成
-- 支持导入机器学习检测结果
-- 实时展示检测数据
-- 与后端服务无缝集成
+### 检测能力
+- **能效等级识别**：通过颜色分析和 OCR 识别 1~5 级能效标签
+- **缺陷检测**：检测标签是否存在破损、污渍、褶皱等缺陷
+- **位置检测**：判断能效标签是否粘贴在规定位置，显示坐标和偏差值
+- **参数提取**：识别能效参数和待机功率
 
 ## 项目结构
 
 ```
-/workspace/
-├── AppScope/              # 应用全局配置
-├── entry/                 # 主模块
-│   ├── src/main/ets/      # ETS 代码
-│   │   ├── common/        # 公共文件和接口定义
-│   │   ├── entryability/  # 应用入口
-│   │   ├── pages/         # 页面
-│   │   │   ├── Index.ets  # 主页面（实时检测）
-│   │   │   ├── Settings.ets  # 设置页面
-│   │   │   └── History.ets  # 历史记录页面
-│   │   └── resources/     # 资源文件
-├── backend/               # 后端服务
-│   ├── src/               # 后端代码
-│   │   ├── api/           # API路由
-│   │   ├── services/      # 业务逻辑服务
-│   │   └── server.js      # 服务器入口
-│   └── package.json       # 后端依赖
-├── .trae/documents/       # 产品需求文档和技术架构文档
-└── build-profile.json5    # 构建配置
+NewBeePlus/
+├── AppScope/                  # 应用全局配置
+├── entry/                     # 主模块
+│   ├── src/main/ets/
+│   │   ├── common/
+│   │   │   └── Interfaces.ets # 类型定义
+│   │   ├── entryability/      # 应用入口
+│   │   └── pages/
+│   │       ├── Index.ets      # 主页面（双模式检测）
+│   │       ├── CameraPage.ets # 相机拍照页面
+│   │       ├── Settings.ets   # 设置页面
+│   │       └── History.ets    # 历史记录页面
+│   └── src/main/resources/
+│       └── rawfile/test_images/ # 测试图片
+├── backend/
+│   ├── src/
+│   │   ├── api/               # API 路由
+│   │   ├── services/          # 业务逻辑
+│   │   ├── python/            # Python ML 检测引擎
+│   │   │   ├── detect_api.py  # YOLO + 颜色分析 + OCR
+│   │   │   └── best.pt        # YOLO 模型权重
+│   │   └── server.js          # 服务器入口
+│   └── package.json
+└── build-profile.json5
 ```
+
+## 检测引擎
+
+后端 Python 检测引擎集成多阶段分析：
+
+1. **YOLO 目标检测**：检测标签位置和缺陷类型（破损/污渍/褶皱）
+2. **颜色分析**：基于 HSV 色彩空间识别能效等级（87% 准确率）
+3. **OCR 识别**：PaddleOCR 提取能效参数和待机功率，辅助等级判定
+
+## 测试图片
+
+内置 13 张测试图片，位于 `entry/src/main/resources/rawfile/test_images/`：
+
+| 类型 | 数量 | 示例文件 |
+|------|------|---------|
+| 能效等级标签（正常） | 5 张 | `test_L1~L5_nor.jpg` |
+| 破损缺陷 (DAM) | 2 张 | `A02_L2_T01_DAM_003.jpg` |
+| 污渍缺陷 (STA) | 2 张 | `A02_L2_T04_STA_023.jpg` |
+| 褶皱缺陷 (WRI) | 2 张 | `A02_L2_T06_WRI_015.jpg` |
+| 位置偏移 | 2 张 | `A02_L2_T06_NOR_022.jpg` |
 
 ## 页面说明
 
-### 1. 主页面（Index.ets）
-- **相机监控**：显示工业相机实时画面，支持开始/停止检测。
-- **检测结果**：实时显示能效标签识别结果，包括产品型号、能效等级、功耗和数据匹配状态。
-- **缺陷检测**：显示标签是否存在破损、污渍、褶皱等缺陷。
-- **位置检测**：判断能效标签是否粘贴在规定位置，显示位置坐标和偏差值。
-- **机器学习集成**：支持导入机器学习检测结果，实时更新检测数据。
-- **系统状态**：显示相机连接状态、检测速度和系统运行时间。
+### 主页面（Index.ets）
+顶部模式切换按钮在手动模式和产线模式之间切换：
 
-### 2. 设置页面（Settings.ets）
-- **参数配置**：配置相机参数（分辨率、帧率、曝光时间）和检测参数（精度、速度、阈值）。
-- **产品管理**：添加、编辑、删除产品型号信息，包括产品型号、能效等级和功耗。
+**手动模式**：
+- 图片预览区 → 操作按钮（选择图片/拍照/测试图片/分析）→ 检测结果卡片
 
-### 3. 历史记录页面（History.ets）
-- **检测记录**：查看历史检测结果，支持按产品型号、日期和状态进行搜索和过滤。
-- **统计分析**：显示总检测数、通过数、失败数、通过率、缺陷统计和位置偏差统计。
-- **报告导出**：导出检测报告为 Excel 或 PDF 格式，支持选择时间范围。
+**产线模式**：
+- 相机预览 + 实时统计面板 → 控制栏（开始/暂停/结束 + 间隔选择）→ 检测记录列表
 
-## 技术实现
+### 设置页面（Settings.ets）
+- 检测参数配置（精度、速度、阈值）
+- 服务器地址配置
+- 工业相机默认拍照间隔配置
 
-### 前端
-- **框架**：OpenHarmony 6.0.2 + ETS (ArkTS)
-- **页面导航**：使用 @ohos.router 实现页面跳转
-- **状态管理**：使用 @State 装饰器管理组件状态
-- **UI 组件**：使用 OpenHarmony 内置组件，如 Flex、Row、Column、Text、Button、TextInput、Slider 等
-- **API 调用**：使用 fetch API 与后端服务通信
+### 历史记录页面（History.ets）
+- 检测记录查询（按型号、日期、状态过滤）
+- 统计分析（通过率、缺陷统计、位置偏差）
+- CSV 报告导出
 
-### 后端
-- **框架**：Node.js + Express.js
-- **API 风格**：RESTful API
-- **数据处理**：内置服务层处理业务逻辑
-- **跨域支持**：使用 CORS 中间件
-- **文件上传**：支持通过 API 导入机器学习结果
-
-## 运行环境
+## 技术栈
 
 ### 前端
-- **开发工具**：DevEco Studio
-- **OpenHarmony 版本**：6.0.2
-- **目标设备**：工业平板或显示器
+- **框架**：OpenHarmony 6.0.2 + ArkTS
+- **相机**：`@ohos.multimedia.camera` + XComponent
+- **网络**：`@ohos.net.http` RESTful API
+- **导航**：`@ohos.router`
 
 ### 后端
-- **运行环境**：Node.js 14.0 或更高版本
-- **依赖管理**：npm
-- **网络要求**：与前端应用在同一网络环境
+- **服务**：Node.js + Express.js
+- **检测**：Python + Ultralytics YOLO + PaddleOCR + OpenCV
+- **通信**：Node.js 子进程调用 Python 脚本
 
-## 如何运行
+## 运行
 
-### 1. 启动后端服务
+### 1. 启动后端
 
 ```bash
-# 进入后端目录
 cd backend
-
-# 安装依赖
 npm install
-
-# 启动服务
 npm start
 ```
 
-后端服务将在 `http://localhost:3000` 运行。
+后端运行在 `http://localhost:3000`，需要 Python 环境及 YOLO 模型文件。
 
-### 2. 运行前端项目
+### 2. 运行前端
 
 1. 在 DevEco Studio 中打开项目
-2. 配置 OpenHarmony 开发环境
-3. 编译并运行项目到目标设备
+2. 配置 OpenHarmony SDK 6.0.2
+3. 编译并部署到目标设备
 
-## 系统特点
+## 后端 API
 
-- **实时性**：实时显示检测结果，便于生产环节的即时调整。
-- **准确性**：准确识别能效标签上的数据信息，并与预设的产品型号信息进行比对。
-- **可扩展性**：系统可以灵活接入家电产品在工业生产中的其他场景功能。
-- **用户友好**：直观的用户界面，便于操作和管理。
-- **机器学习集成**：支持导入机器学习检测结果，提升检测精度和效率。
-
-## 机器学习结果格式
-
-导入机器学习结果时，需要使用以下JSON格式：
-
-```json
-{
-  "productModel": "产品型号",
-  "energyEfficiency": "能效等级",
-  "powerConsumption": "功耗",
-  "isDataMatch": true,
-  "defects": {
-    "isDamaged": false,
-    "isStained": false,
-    "isWrinkled": false
-  },
-  "position": {
-    "isCorrect": true,
-    "x": 120,
-    "y": 80,
-    "deviation": 0.5
-  },
-  "isPass": true
-}
-```
-
-## 后端API接口
-
-### 检测相关
-- `GET /api/detection/result` - 获取实时检测结果
-- `POST /api/detection/start` - 开始检测
-- `POST /api/detection/stop` - 停止检测
-- `POST /api/detection/import-ml-result` - 导入机器学习结果
-
-### 产品相关
-- `GET /api/products` - 获取所有产品
-- `GET /api/products/:id` - 获取单个产品
-- `POST /api/products` - 添加产品
-- `PUT /api/products/:id` - 更新产品
-- `DELETE /api/products/:id` - 删除产品
-
-### 历史记录相关
-- `GET /api/history` - 获取检测记录
-- `GET /api/history/:id` - 获取单个检测记录
-- `GET /api/history/export/csv` - 导出检测记录为CSV
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/detection/analyze` | 分析图片（base64） |
+| GET | `/api/detection/result` | 获取最新检测结果 |
+| GET | `/api/history` | 获取检测记录 |
+| GET | `/api/history/stats` | 获取统计数据 |
+| GET | `/api/history/export/csv` | 导出 CSV |
+| GET | `/api/products` | 产品管理 |
+| GET | `/health` | 健康检查 |

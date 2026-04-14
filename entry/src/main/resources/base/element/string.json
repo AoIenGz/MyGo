@@ -10,7 +10,15 @@
     },
     {
       "name": "EntryAbility_label",
-      "value": "label"
+      "value": "能效标签检测"
+    },
+    {
+      "name": "camera_reason",
+      "value": "用于拍摄能效标签图片进行检测"
+    },
+    {
+      "name": "internet_reason",
+      "value": "用于连接检测服务进行图片分析"
     }
   ]
 }

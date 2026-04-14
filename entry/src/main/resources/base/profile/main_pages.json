@@ -2,6 +2,7 @@
   "src": [
     "pages/Index",
     "pages/Settings",
-    "pages/History"
+    "pages/History",
+    "pages/CameraPage"
   ]
 }

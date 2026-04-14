@@ -1,129 +1,106 @@
 // 历史记录服务
 class HistoryService {
   constructor() {
-    // 模拟检测记录数据
-    this.detectionRecords = [
-      {
-        id: '1',
-        timestamp: '2024-01-01T10:00:00',
-        productModel: 'HB-2024-001',
-        energyEfficiency: 'A+',
-        isDataMatch: true,
-        defects: {
-          isDamaged: false,
-          isStained: false,
-          isWrinkled: false,
-        },
-        position: {
-          isCorrect: true,
-          x: 120,
-          y: 80,
-          deviation: 0.5,
-        },
-        isPass: true,
-      },
-      {
-        id: '2',
-        timestamp: '2024-01-01T10:05:00',
-        productModel: 'HB-2024-002',
-        energyEfficiency: 'A',
-        isDataMatch: true,
-        defects: {
-          isDamaged: false,
-          isStained: true,
-          isWrinkled: false,
-        },
-        position: {
-          isCorrect: true,
-          x: 118,
-          y: 82,
-          deviation: 0.8,
-        },
-        isPass: false,
-      },
-      {
-        id: '3',
-        timestamp: '2024-01-01T10:10:00',
-        productModel: 'HB-2024-003',
-        energyEfficiency: 'B',
-        isDataMatch: true,
-        defects: {
-          isDamaged: false,
-          isStained: false,
-          isWrinkled: false,
-        },
-        position: {
-          isCorrect: false,
-          x: 100,
-          y: 70,
-          deviation: 2.5,
-        },
-        isPass: false,
-      },
-    ];
+    this.records = [];
+    this.nextId = 1;
   }
 
-  // 获取检测记录
-  getDetectionRecords(filters) {
-    let records = [...this.detectionRecords];
-    
-    // 应用过滤条件
-    if (filters.productModel) {
-      records = records.filter(record => record.productModel === filters.productModel);
-    }
-    
-    if (filters.startDate) {
-      records = records.filter(record => new Date(record.timestamp) >= new Date(filters.startDate));
-    }
-    
-    if (filters.endDate) {
-      records = records.filter(record => new Date(record.timestamp) <= new Date(filters.endDate));
-    }
-    
-    if (filters.status) {
-      const isPass = filters.status === 'pass';
-      records = records.filter(record => record.isPass === isPass);
-    }
-    
-    return records;
-  }
-
-  // 根据ID获取检测记录
-  getDetectionRecordById(id) {
-    const record = this.detectionRecords.find(r => r.id === id);
-    if (!record) {
-      throw new Error('记录未找到');
-    }
+  // 保存一条检测记录
+  addRecord(result) {
+    const record = {
+      id: String(this.nextId++),
+      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+      productModel: result.productModel || '-',
+      grade: result.grade || 0,
+      energyParam: result.energyParam != null ? String(result.energyParam) : '未识别',
+      standbyPower: result.standbyPower != null ? String(result.standbyPower) : '未识别',
+      isDataMatch: result.labelFound || false,
+      defects: result.defects || { isDamaged: false, isStained: false, isWrinkled: false },
+      position: result.position || { isCorrect: true, x: 0, y: 0, deviation: 0 },
+      isPass: result.isPass || false,
+      hasDefect: result.hasDefect || false,
+      gradeMethod: result.gradeMethod || null,
+      labelConfidence: result.labelConfidence || null,
+    };
+    this.records.unshift(record); // 最新的在前面
     return record;
   }
 
-  // 导出检测记录为CSV
+  // 获取检测记录（带过滤）
+  getDetectionRecords(filters) {
+    let records = [...this.records];
+
+    if (filters.productModel) {
+      records = records.filter(r => r.productModel.includes(filters.productModel));
+    }
+    if (filters.startDate) {
+      records = records.filter(r => r.timestamp >= filters.startDate);
+    }
+    if (filters.endDate) {
+      const end = filters.endDate + ' 23:59:59';
+      records = records.filter(r => r.timestamp <= end);
+    }
+    if (filters.status === 'pass') {
+      records = records.filter(r => r.isPass);
+    } else if (filters.status === 'fail') {
+      records = records.filter(r => !r.isPass);
+    }
+
+    return records;
+  }
+
+  // 根据ID获取
+  getDetectionRecordById(id) {
+    const record = this.records.find(r => r.id === id);
+    if (!record) throw new Error('记录未找到');
+    return record;
+  }
+
+  // 获取统计信息
+  getStats() {
+    const total = this.records.length;
+    const passCount = this.records.filter(r => r.isPass).length;
+    const failCount = total - passCount;
+    const damaged = this.records.filter(r => r.defects?.isDamaged).length;
+    const stained = this.records.filter(r => r.defects?.isStained).length;
+    const wrinkled = this.records.filter(r => r.defects?.isWrinkled).length;
+
+    const deviations = this.records
+      .map(r => r.position?.deviation || 0)
+      .filter(d => d > 0);
+
+    const avgDev = deviations.length > 0
+      ? (deviations.reduce((a, b) => a + b, 0) / deviations.length).toFixed(2)
+      : '0';
+    const maxDev = deviations.length > 0 ? Math.max(...deviations).toFixed(2) : '0';
+    const minDev = deviations.length > 0 ? Math.min(...deviations).toFixed(2) : '0';
+
+    return {
+      total, passCount, failCount,
+      passRate: total > 0 ? Math.round(passCount / total * 100) : 0,
+      damaged, stained, wrinkled,
+      avgDev, maxDev, minDev,
+    };
+  }
+
+  // 导出CSV
   exportDetectionRecords(filters) {
     const records = this.getDetectionRecords(filters);
-    
-    // CSV头部
-    let csv = 'ID,时间戳,产品型号,能效等级,数据匹配,破损,污渍,褶皱,位置是否正确,X坐标,Y坐标,偏差值,检测结果\n';
-    
-    // 转换数据为CSV行
-    records.forEach(record => {
-      const row = [
-        record.id,
-        record.timestamp,
-        record.productModel,
-        record.energyEfficiency,
-        record.isDataMatch ? '是' : '否',
-        record.defects.isDamaged ? '是' : '否',
-        record.defects.isStained ? '是' : '否',
-        record.defects.isWrinkled ? '是' : '否',
-        record.position.isCorrect ? '是' : '否',
-        record.position.x,
-        record.position.y,
-        record.position.deviation,
-        record.isPass ? '通过' : '失败'
-      ];
-      csv += row.join(',') + '\n';
+    let csv = '\uFEFFID,时间,产品型号,能效等级,能效参数,待机功率,数据匹配,破损,污渍,褶皱,位置正确,偏差,检测结果\n';
+    records.forEach(r => {
+      csv += [
+        r.id, r.timestamp, r.productModel,
+        r.grade ? `${r.grade}级` : '未识别',
+        r.energyParam, r.standbyPower,
+        r.isDataMatch ? '是' : '否',
+        r.defects.isDamaged ? '是' : '否',
+        r.defects.isStained ? '是' : '否',
+        r.defects.isWrinkled ? '是' : '否',
+        r.position.isCorrect ? '是' : '否',
+        r.position.deviation,
+        r.isPass ? '通过' : '失败',
+      ].join(',') + '\n';
     });
-    
     return csv;
   }
 }

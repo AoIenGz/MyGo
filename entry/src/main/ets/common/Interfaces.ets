@@ -11,14 +11,45 @@ interface Position {
   deviation: number;
 }
 
+// 后端 Python 检测返回的原始结果
+interface AnalyzeResult {
+  success: boolean;
+  error?: string;
+  grade: number | null;
+  gradeMethod: string | null;
+  gradeConfidence: number | null;
+  energyParam: number | null;
+  standbyPower: number | null;
+  defects: Defects;
+  position: Position;
+  isPass: boolean;
+  detections: Array<DetectionItem>;
+  labelFound: boolean;
+  hasDefect?: boolean;
+  labelConfidence?: number;
+  labelBbox?: number[];
+  message?: string;
+}
+
+interface DetectionItem {
+  class: string;
+  confidence: number;
+  bbox: number[];
+}
+
+// 前端展示用的检测结果
 interface DetectionResult {
-  productModel: string;
-  energyEfficiency: string;
-  powerConsumption: string;
+  grade: number;
+  gradeMethod: string;
+  gradeConfidence: number;
+  energyParam: string;
+  standbyPower: string;
   isDataMatch: boolean;
   defects: Defects;
   position: Position;
   isPass: boolean;
+  labelFound: boolean;
+  hasDefect: boolean;
 }
 
 interface SystemStatus {
@@ -42,13 +73,13 @@ interface DetectionParams {
 interface Product {
   id: string;
   model: string;
-  energyEfficiency: string;
+  energyGrade: number;
   powerConsumption: number;
 }
 
 interface NewProduct {
   model: string;
-  energyEfficiency: string;
+  energyGrade: number;
   powerConsumption: number;
 }
 
@@ -56,7 +87,8 @@ interface DetectionRecord {
   id: string;
   timestamp: string;
   productModel: string;
-  energyEfficiency: string;
+  grade: number;
+  energyParam: string;
   isDataMatch: boolean;
   defects: Defects;
   position: Position;
@@ -70,9 +102,42 @@ interface SearchParams {
   status: string;
 }
 
+// 检测模式
+type DetectionMode = 'manual' | 'industrial';
+
+// 工业相机配置
+interface IndustrialCameraConfig {
+  captureInterval: number;  // 捕获间隔(秒)
+}
+
+// 产线模式会话统计
+interface DetectionSessionStats {
+  totalCaptures: number;
+  passCount: number;
+  failCount: number;
+  passRate: number;
+  averageTime: number;
+  sessionStart: number;
+  defectDamaged: number;
+  defectStained: number;
+  defectWrinkled: number;
+}
+
+// 产线模式单条检测记录
+interface AutoDetectionRecord {
+  id: number;
+  timestamp: string;
+  imageUri: string;
+  result: DetectionResult | null;
+  status: 'captured' | 'analyzing' | 'completed' | 'failed';
+  errorMessage: string;
+}
+
 export {
   Defects,
   Position,
+  AnalyzeResult,
+  DetectionItem,
   DetectionResult,
   SystemStatus,
   CameraParams,
@@ -80,5 +145,9 @@ export {
   Product,
   NewProduct,
   DetectionRecord,
-  SearchParams
+  SearchParams,
+  DetectionMode,
+  IndustrialCameraConfig,
+  DetectionSessionStats,
+  AutoDetectionRecord
 }

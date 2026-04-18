@@ -28,7 +28,7 @@
 ## 项目结构
 
 ```
-NewBeePlus/
+MyGo/
 ├── AppScope/                  # 应用全局配置
 ├── entry/                     # 主模块
 │   ├── src/main/ets/

@@ -1,46 +1,77 @@
-// 产品服务
-class ProductService {
-  constructor() {
-    this.products = [
-      { id: '1', model: 'HB-2024-001', energyGrade: 1, powerConsumption: 120 },
-      { id: '2', model: 'HB-2024-002', energyGrade: 2, powerConsumption: 150 },
-      { id: '3', model: 'HB-2024-003', energyGrade: 3, powerConsumption: 180 },
-    ];
-    this.nextId = 4;
-  }
+const { getDb, save } = require('../db/database');
 
+class ProductService {
   getProducts() {
-    return this.products;
+    const db = getDb();
+    const stmt = db.prepare('SELECT * FROM products');
+    const products = [];
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      products.push({
+        id: String(row.id),
+        model: row.model,
+        energyGrade: row.energy_grade,
+        powerConsumption: row.power_consumption,
+      });
+    }
+    stmt.free();
+    return products;
   }
 
   getProductById(id) {
-    const product = this.products.find(p => p.id === id);
-    if (!product) throw new Error('产品未找到');
-    return product;
+    const db = getDb();
+    const stmt = db.prepare('SELECT * FROM products WHERE id = ?');
+    stmt.bind([id]);
+    if (stmt.step()) {
+      const row = stmt.getAsObject();
+      stmt.free();
+      return {
+        id: String(row.id),
+        model: row.model,
+        energyGrade: row.energy_grade,
+        powerConsumption: row.power_consumption,
+      };
+    }
+    stmt.free();
+    throw new Error('产品未找到');
   }
 
   addProduct(productData) {
-    const newProduct = {
-      id: String(this.nextId++),
+    const db = getDb();
+    db.run(
+      'INSERT INTO products (model, energy_grade, power_consumption) VALUES (?, ?, ?)',
+      [productData.model, productData.energyGrade, productData.powerConsumption]
+    );
+    const rs = db.exec('SELECT last_insert_rowid()');
+    const id = rs[0] ? rs[0].values[0][0] : 0;
+    save();
+    return {
+      id: String(id),
       model: productData.model,
       energyGrade: productData.energyGrade,
       powerConsumption: productData.powerConsumption,
     };
-    this.products.push(newProduct);
-    return newProduct;
   }
 
   updateProduct(id, productData) {
-    const index = this.products.findIndex(p => p.id === id);
-    if (index === -1) throw new Error('产品未找到');
-    this.products[index] = { ...this.products[index], ...productData };
-    return this.products[index];
+    const db = getDb();
+    const existing = this.getProductById(id);
+    const model = productData.model || existing.model;
+    const energyGrade = productData.energyGrade !== undefined ? productData.energyGrade : existing.energyGrade;
+    const powerConsumption = productData.powerConsumption !== undefined ? productData.powerConsumption : existing.powerConsumption;
+    db.run(
+      'UPDATE products SET model = ?, energy_grade = ?, power_consumption = ? WHERE id = ?',
+      [model, energyGrade, powerConsumption, id]
+    );
+    save();
+    return { id: String(id), model, energyGrade, powerConsumption };
   }
 
   deleteProduct(id) {
-    const index = this.products.findIndex(p => p.id === id);
-    if (index === -1) throw new Error('产品未找到');
-    this.products.splice(index, 1);
+    const db = getDb();
+    this.getProductById(id);
+    db.run('DELETE FROM products WHERE id = ?', [id]);
+    save();
   }
 }
 

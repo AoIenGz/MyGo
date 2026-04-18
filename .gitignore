@@ -10,3 +10,7 @@
 /.clang-tidy
 **/.test
 /.appanalyzer
+/backend/data/
+/docs/node_modules/
+/graphify-out/
+/.claude/

@@ -2,6 +2,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const historyService = require('./historyService');
+const { getDb, save } = require('../db/database');
 
 // 配置 - 根据实际环境修改
 const CONFIG = {
@@ -36,6 +37,28 @@ class DetectionService {
   }
 
   getDetectionResult() {
+    try {
+      const db = getDb();
+      const stmt = db.prepare('SELECT * FROM detection_records ORDER BY id DESC LIMIT 1');
+      if (stmt.step()) {
+        const row = stmt.getAsObject();
+        stmt.free();
+        return {
+          success: true,
+          grade: row.grade || null,
+          gradeMethod: row.grade_method,
+          gradeConfidence: row.label_confidence,
+          energyParam: row.energy_param !== '未识别' ? parseFloat(row.energy_param) : null,
+          standbyPower: row.standby_power !== '未识别' ? parseFloat(row.standby_power) : null,
+          defects: typeof row.defects === 'string' ? JSON.parse(row.defects) : row.defects,
+          position: typeof row.position === 'string' ? JSON.parse(row.position) : row.position,
+          isPass: !!row.is_pass,
+          labelFound: !!row.is_data_match,
+          hasDefect: !!row.has_defect,
+        };
+      }
+      stmt.free();
+    } catch (e) { /* 数据库未就绪时回退 */ }
     return this.detectionResult;
   }
 

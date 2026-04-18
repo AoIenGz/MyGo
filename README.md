@@ -45,11 +45,13 @@ NewBeePlus/
 ├── backend/
 │   ├── src/
 │   │   ├── api/               # API 路由
+│   │   ├── db/                # 数据库模块（sql.js SQLite）
 │   │   ├── services/          # 业务逻辑
 │   │   ├── python/            # Python ML 检测引擎
 │   │   │   ├── detect_api.py  # YOLO + 颜色分析 + OCR
 │   │   │   └── best.pt        # YOLO 模型权重
 │   │   └── server.js          # 服务器入口
+│   ├── data/                  # 数据库文件目录
 │   └── package.json
 └── build-profile.json5
 ```
@@ -105,6 +107,7 @@ NewBeePlus/
 
 ### 后端
 - **服务**：Node.js + Express.js
+- **存储**：sql.js（SQLite WebAssembly 本地存储）
 - **检测**：Python + Ultralytics YOLO + PaddleOCR + OpenCV
 - **通信**：Node.js 子进程调用 Python 脚本
 
@@ -118,7 +121,7 @@ npm install
 npm start
 ```
 
-后端运行在 `http://localhost:3000`，需要 Python 环境及 YOLO 模型文件。
+后端运行在 `http://localhost:3000`，需要 Python 环境及 YOLO 模型文件。数据库文件自动生成在 `backend/data/detection.db`。
 
 ### 2. 运行前端
 

@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const { initDatabase } = require('./db/database');
 const detectionRoutes = require('./api/detectionRoutes');
 const productRoutes = require('./api/productRoutes');
 const historyRoutes = require('./api/historyRoutes');
@@ -22,9 +23,17 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-// 启动服务器
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// 启动服务器（先初始化数据库）
+async function start() {
+  await initDatabase();
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+start().catch(err => {
+  console.error('服务启动失败:', err);
+  process.exit(1);
 });
 
 module.exports = app;
